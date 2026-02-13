@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>シミュレーション条件生成ツール (155Wパネル版 - シート貼付用)</title>
+<style>
+    body { font-family: "Helvetica Neue", Arial, sans-serif; background-color: #f4f7f6; color: #333; margin: 0; padding: 20px; }
+    .container { max-width: 900px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+    h1 { text-align: center; color: #2c3e50; margin-bottom: 20px; font-size: 22px; }
+    
+    .config-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+    .config-box { background: #f8f9fa; padding: 20px; border-radius: 6px; border: 1px solid #e9ecef; }
+    
+    label { display: block; margin-bottom: 5px; font-weight: bold; font-size: 14px; }
+    .input-group { margin-bottom: 15px; }
+    input[type="number"], input[type="text"] { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; font-size: 16px; }
+    .helper { font-size: 12px; color: #7f8c8d; margin-top: 4px; }
+    .unit-label { font-size: 14px; color: #555; background: #e2e6ea; padding: 5px 10px; border-radius: 4px; margin-bottom: 15px; display: inline-block;}
+
+    /* ボタンのデザイン */
+    button { width: 100%; padding: 15px; border: none; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; transition: background 0.2s; color: white; }
+    
+    .generate-btn { background: #3498db; margin-bottom: 20px; font-size: 18px; }
+    .generate-btn:hover { background: #2980b9; }
+
+    .copy-btn { background: #27ae60; margin-bottom: 10px; }
+    .copy-btn:hover { background: #219150; }
+
+    .result-area { margin-top: 20px; display: none; border-top: 2px solid #eee; padding-top: 20px; }
+    textarea { width: 100%; height: 200px; font-family: monospace; padding: 10px; border: 1px solid #ccc; border-radius: 4px; margin-bottom: 10px; font-size: 14px; }
+    
+    .status-msg { padding: 15px; margin-bottom: 15px; border-radius: 4px; font-weight: bold; text-align: center; display: none; }
+    .error { background-color: #fdecea; color: #e74c3c; border: 1px solid #fadbd8; }
+    .success { background-color: #e8f6f3; color: #16a085; border: 1px solid #d4efdf; }
+
+    .toggle-container { display: flex; gap: 10px; margin-bottom: 10px; }
+    .mode-btn { flex: 1; padding: 8px; border: 1px solid #bdc3c7; background: #fff; cursor: pointer; text-align: center; border-radius: 4px; font-size: 14px; color: #333; }
+    .mode-btn.active { background: #3498db; color: white; border-color: #3498db; }
+</style>
+</head>
+<body>
+
+<div class="container">
+    <h1>⚡️ 設備容量シミュレーション (155Wパネル版)</h1>
+
+    <div id="statusMessage" class="status-msg"></div>
+
+    <div class="config-grid">
+        <div class="config-box">
+            <h2>1. パネル設定</h2>
+            <div class="unit-label">パネル単体出力: <strong>155 W</strong> (固定)</div>
+            
+            <div class="input-group">
+                <label>枚数 最小 (Min)</label>
+                <input type="number" id="countMin" value="50" placeholder="例: 10">
+            </div>
+            <div class="input-group">
+                <label>枚数 最大 (Max)</label>
+                <input type="number" id="countMax" value="100" placeholder="例: 100">
+            </div>
+            <div class="input-group">
+                <label>刻み幅 (Step)</label>
+                <input type="number" id="countStep" value="1" placeholder="例: 1">
+                <div class="helper">例: 1枚ずつ増やす</div>
+            </div>
+            <input type="hidden" id="panelUnitWatt" value="155">
+        </div>
+
+        <div class="config-box">
+            <h2>2. パワーコンディショナ (PCS)</h2>
+            <div class="unit-label">PCS単体出力: <strong>4.95 kW</strong> (固定)</div>
+            
+            <div class="toggle-container">
+                <div class="mode-btn active" onclick="setPcsMode('range')" id="btnRange">範囲指定</div>
+                <div class="mode-btn" onclick="setPcsMode('fixed')" id="btnFixed">個別指定</div>
+            </div>
+
+            <div id="pcsRangeMode">
+                <div class="input-group">
+                    <label>台数 最小 (台)</label>
+                    <input type="number" id="pcsMinUnits" value="1" min="1">
+                    <div class="helper">最小 PCS容量: <span id="pcsMinKwDisplay">4.95</span> kW</div>
+                </div>
+                <div class="input-group">
+                    <label>台数 最大 (台)</label>
+                    <input type="number" id="pcsMaxUnits" value="2" min="1">
+                    <div class="helper">最大 PCS容量: <span id="pcsMaxKwDisplay">9.90</span> kW</div>
+                </div>
+                <div class="input-group">
+                    <label>刻み幅 (台)</label>
+                    <input type="number" id="pcsStepUnits" value="1" min="1">
+                </div>
+            </div>
+
+            <div id="pcsFixedMode" style="display:none;">
+                <div class="input-group">
+                    <label>PCS台数リスト (カンマ区切り)</label>
+                    <input type="text" id="pcsUnitsList" value="1, 2, 3">
+                    <div class="helper">例: 1, 2, 3 (台数で指定)</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="config-box" style="margin-bottom: 20px;">
+        <h2>3. 過積載率フィルター (%)</h2>
+        <div style="display: flex; gap: 20px;">
+            <div style="flex:1;">
+                <label>下限 (%)</label>
+                <input type="number" id="overloadMin" value="100">
+            </div>
+            <div style="flex:1;">
+                <label>上限 (%)</label>
+                <input type="number" id="overloadMax" value="200">
+            </div>
+        </div>
+    </div>
+
+    <button class="generate-btn" onclick="generateCombinations()">組み合わせを生成する</button>
+
+    <div id="resultArea" class="result-area">
+        <button class="copy-btn" onclick="copyResult()">📋 結果をクリップボードにコピー</button>
+        <p class="helper">スプレッドシートのA1セルに貼り付けてください</p>
+        <textarea id="outputData" readonly onclick="this.select()"></textarea>
+    </div>
+</div>
+
+<script>
+    const PCS_UNIT_KW = 4.95; // PCS1台あたりの出力(kW)
+    let pcsMode = 'range';
+
+    function updatePcsDisplay() {
+        const minUnits = parseInt(document.getElementById('pcsMinUnits').value) || 1;
+        const maxUnits = parseInt(document.getElementById('pcsMaxUnits').value) || 1;
+        document.getElementById('pcsMinKwDisplay').innerText = (minUnits * PCS_UNIT_KW).toFixed(2);
+        document.getElementById('pcsMaxKwDisplay').innerText = (maxUnits * PCS_UNIT_KW).toFixed(2);
+    }
+
+    document.getElementById('pcsMinUnits').addEventListener('input', updatePcsDisplay);
+    document.getElementById('pcsMaxUnits').addEventListener('input', updatePcsDisplay);
+
+    function setPcsMode(mode) {
+        pcsMode = mode;
+        document.getElementById('btnRange').className = mode === 'range' ? 'mode-btn active' : 'mode-btn';
+        document.getElementById('btnFixed').className = mode === 'fixed' ? 'mode-btn active' : 'mode-btn';
+        document.getElementById('pcsRangeMode').style.display = mode === 'range' ? 'block' : 'none';
+        document.getElementById('pcsFixedMode').style.display = mode === 'fixed' ? 'block' : 'none';
+    }
+
+    function showStatus(msg, type) {
+        const el = document.getElementById('statusMessage');
+        el.style.display = 'block';
+        el.innerText = msg;
+        el.className = 'status-msg ' + type;
+    }
+
+    function generateCombinations() {
+        document.getElementById('resultArea').style.display = 'none';
+        
+        const getVal = (id) => parseFloat(document.getElementById(id).value);
+        
+        const unitW = getVal('panelUnitWatt');
+        const cMin = getVal('countMin');
+        const cMax = getVal('countMax');
+        const cStep = getVal('countStep');
+        const ovMin = getVal('overloadMin');
+        const ovMax = getVal('overloadMax');
+
+        if (isNaN(cMin) || isNaN(cMax) || isNaN(cStep)) {
+            showStatus("エラー: パネル枚数が正しく入力されていません。", "error");
+            return;
+        }
+        if (cMin > cMax) {
+            showStatus("エラー: 枚数の最小値が最大値を超えています。", "error");
+            return;
+        }
+
+        let pcsUnits = [];
+        if (pcsMode === 'range') {
+            const uMin = parseInt(document.getElementById('pcsMinUnits').value);
+            const uMax = parseInt(document.getElementById('pcsMaxUnits').value);
+            const uStep = parseInt(document.getElementById('pcsStepUnits').value);
+            if (isNaN(uMin) || isNaN(uMax) || isNaN(uStep) || uStep <= 0) {
+                showStatus("エラー: PCS台数設定が正しくありません。", "error");
+                return;
+            }
+            for (let u = uMin; u <= uMax; u += uStep) {
+                pcsUnits.push(u);
+            }
+        } else {
+            const raw = document.getElementById('pcsUnitsList').value;
+            if (!raw.trim()) { showStatus("エラー: PCS台数リストが空です。", "error"); return; }
+            pcsUnits = raw.split(',').map(v => parseInt(v.trim())).filter(v => !isNaN(v) && v > 0);
+        }
+
+        let results = [];
+        // ヘッダー行を削除しました。データのみ生成します。
+
+        let countTried = 0;
+        let matchCount = 0;
+
+        for (let count = cMin; count <= cMax; count += cStep) {
+            let systemKw = (count * unitW) / 1000;
+            
+            for (let units of pcsUnits) {
+                countTried++;
+                let pcsKw = units * PCS_UNIT_KW;
+                let overload = (systemKw / pcsKw) * 100;
+                
+                if (overload >= ovMin && overload <= ovMax) {
+                    matchCount++;
+                    let sysDisp = Math.round(systemKw * 100) / 100;
+                    let pcsDisp = Math.round(pcsKw * 100) / 100;
+                    let ovDisp = Math.round(overload * 100) / 100;
+
+                    // スプレッドシート用: [枚数] [システムkW] [PCS台数] [PCSkW] [過積載%]
+                    results.push(`${count}\t${sysDisp}\t${units}\t${pcsDisp}\t${ovDisp}`);
+                }
+            }
+        }
+
+        if (matchCount === 0) {
+            showStatus(`計算結果 0件: ${countTried} 通り試しましたが、フィルター条件に合致しませんでした。`, "error");
+        } else {
+            showStatus(`完了: ${matchCount} 件のデータを作成しました。`, "success");
+            document.getElementById('outputData').value = results.join('\n');
+            document.getElementById('resultArea').style.display = 'block';
+        }
+    }
+
+    function copyResult() {
+        const copyText = document.getElementById("outputData");
+        copyText.select();
+        document.execCommand("copy");
+        showStatus("コピーしました！スプレッドシートに貼り付けてください。", "success");
+    }
+
+    updatePcsDisplay();
+</script>
+
+</body>
+</html>
