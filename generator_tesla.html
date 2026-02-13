@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>最適な設備容量探索</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+
+    :root {
+        --tesla-black: #000000;
+        --tesla-white: #ffffff;
+        --tesla-gray: #393c41;
+        --tesla-light-gray: #f4f4f4;
+        --tesla-blue: #3e6ae1;
+        --tesla-red: #e82127;
+    }
+
+    body {
+        font-family: 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif;
+        background: linear-gradient(135deg, #000000 0%, #1a1a1a 100%);
+        color: var(--tesla-white);
+        min-height: 100vh;
+        padding: 0;
+        overflow-x: hidden;
+    }
+
+    /* Hero Section */
+    .hero {
+        text-align: center;
+        padding: 60px 20px 40px;
+        background: linear-gradient(180deg, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.7) 100%);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .hero::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        left: -50%;
+        width: 200%;
+        height: 200%;
+        background: radial-gradient(circle, rgba(62,106,225,0.1) 0%, transparent 70%);
+        animation: pulse 8s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+        0%, 100% { transform: scale(1); opacity: 0.5; }
+        50% { transform: scale(1.1); opacity: 0.8; }
+    }
+
+    h1 {
+        font-size: 48px;
+        font-weight: 700;
+        letter-spacing: -1px;
+        margin-bottom: 12px;
+        position: relative;
+        z-index: 1;
+        background: linear-gradient(135deg, #ffffff 0%, #a0a0a0 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    .hero p {
+        font-size: 16px;
+        font-weight: 300;
+        color: #b0b0b0;
+        position: relative;
+        z-index: 1;
+    }
+
+    /* Container */
+    .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 40px 20px 80px;
+    }
+
+    /* Grid */
+    .config-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 24px;
+        margin-bottom: 24px;
+    }
+
+    /* Cards */
+    .config-box {
+        background: rgba(255, 255, 255, 0.03);
+        backdrop-filter: blur(20px);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 16px;
+        padding: 32px;
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .config-box::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 2px;
+        background: linear-gradient(90deg, var(--tesla-blue), var(--tesla-red));
+        transform: scaleX(0);
+        transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .config-box:hover {
+        background: rgba(255, 255, 255, 0.06);
+        border-color: rgba(255, 255, 255, 0.15);
+        transform: translateY(-4px);
+    }
+
+    .config-box:hover::before {
+        transform: scaleX(1);
+    }
+
+    h2 {
+        font-size: 20px;
+        font-weight: 600;
+        margin-bottom: 24px;
+        color: var(--tesla-white);
+        letter-spacing: -0.5px;
+    }
+
+    .unit-label {
+        display: inline-block;
+        font-size: 14px;
+        font-weight: 400;
+        color: #888;
+        background: rgba(62, 106, 225, 0.1);
+        padding: 8px 16px;
+        border-radius: 20px;
+        margin-bottom: 24px;
+        border: 1px solid rgba(62, 106, 225, 0.2);
+    }
+
+    .unit-label strong {
+        color: var(--tesla-blue);
+        font-weight: 600;
+    }
+
+    /* Input Groups */
+    .input-group {
+        margin-bottom: 20px;
+    }
+
+    label {
+        display: block;
+        font-size: 13px;
+        font-weight: 500;
+        color: #999;
+        margin-bottom: 8px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    input[type="number"],
+    input[type="text"] {
+        width: 100%;
+        padding: 14px 16px;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 8px;
+        color: var(--tesla-white);
+        font-size: 16px;
+        font-weight: 400;
+        transition: all 0.3s ease;
+        font-family: 'Poppins', sans-serif;
+    }
+
+    input[type="number"]:focus,
+    input[type="text"]:focus {
+        outline: none;
+        background: rgba(255, 255, 255, 0.08);
+        border-color: var(--tesla-blue);
+        box-shadow: 0 0 0 3px rgba(62, 106, 225, 0.1);
+    }
+
+    .helper {
+        font-size: 12px;
+        color: #666;
+        margin-top: 6px;
+        font-weight: 300;
+    }
+
+    /* Toggle Buttons */
+    .toggle-container {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 20px;
+        background: rgba(255, 255, 255, 0.03);
+        padding: 4px;
+        border-radius: 10px;
+    }
+
+    .mode-btn {
+        flex: 1;
+        padding: 12px;
+        background: transparent;
+        border: none;
+        color: #888;
+        cursor: pointer;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 500;
+        transition: all 0.3s ease;
+        font-family: 'Poppins', sans-serif;
+    }
+
+    .mode-btn.active {
+        background: var(--tesla-blue);
+        color: var(--tesla-white);
+        box-shadow: 0 4px 12px rgba(62, 106, 225, 0.3);
+    }
+
+    .mode-btn:hover:not(.active) {
+        background: rgba(255, 255, 255, 0.05);
+        color: #aaa;
+    }
+
+    /* Buttons */
+    button {
+        font-family: 'Poppins', sans-serif;
+    }
+
+    .generate-btn {
+        width: 100%;
+        padding: 18px;
+        background: linear-gradient(135deg, var(--tesla-blue) 0%, #2952b8 100%);
+        color: var(--tesla-white);
+        border: none;
+        border-radius: 12px;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+        box-shadow: 0 8px 24px rgba(62, 106, 225, 0.3);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .generate-btn::before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 0;
+        height: 0;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.2);
+        transform: translate(-50%, -50%);
+        transition: width 0.6s, height 0.6s;
+    }
+
+    .generate-btn:hover::before {
+        width: 300px;
+        height: 300px;
+    }
+
+    .generate-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 12px 32px rgba(62, 106, 225, 0.4);
+    }
+
+    .generate-btn:active {
+        transform: translateY(0);
+    }
+
+    .copy-btn {
+        width: 100%;
+        padding: 16px;
+        background: rgba(255, 255, 255, 0.05);
+        color: var(--tesla-white);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 10px;
+        font-size: 15px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        margin-bottom: 16px;
+    }
+
+    .copy-btn:hover {
+        background: rgba(255, 255, 255, 0.1);
+        border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    /* Status Messages */
+    .status-msg {
+        padding: 16px 20px;
+        margin-bottom: 24px;
+        border-radius: 10px;
+        font-weight: 500;
+        text-align: center;
+        display: none;
+        animation: slideDown 0.4s ease;
+    }
+
+    @keyframes slideDown {
+        from {
+            opacity: 0;
+            transform: translateY(-10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .error {
+        background: rgba(232, 33, 39, 0.1);
+        color: #ff6b6b;
+        border: 1px solid rgba(232, 33, 39, 0.3);
+    }
+
+    .success {
+        background: rgba(52, 211, 153, 0.1);
+        color: #34d399;
+        border: 1px solid rgba(52, 211, 153, 0.3);
+    }
+
+    /* Result Area */
+    .result-area {
+        margin-top: 40px;
+        display: none;
+        animation: fadeIn 0.6s ease;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    .result-area label {
+        font-size: 14px;
+        color: #aaa;
+        margin-bottom: 12px;
+        display: block;
+    }
+
+    textarea {
+        width: 100%;
+        height: 220px;
+        font-family: 'Courier New', monospace;
+        padding: 16px;
+        background: rgba(0, 0, 0, 0.5);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 10px;
+        color: #00ff88;
+        font-size: 13px;
+        resize: vertical;
+        line-height: 1.6;
+    }
+
+    textarea:focus {
+        outline: none;
+        border-color: var(--tesla-blue);
+        box-shadow: 0 0 0 3px rgba(62, 106, 225, 0.1);
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        h1 {
+            font-size: 32px;
+        }
+        
+        .config-grid {
+            grid-template-columns: 1fr;
+        }
+        
+        .config-box {
+            padding: 24px;
+        }
+    }
+</style>
+</head>
+<body>
+
+<div class="hero">
+    <h1>最適な設備容量探索</h1>
+</div>
+
+<div class="container">
+    <div id="statusMessage" class="status-msg"></div>
+
+    <div class="config-grid">
+        <div class="config-box">
+            <h2>ソーラーパネル</h2>
+            <div class="unit-label">出力: <strong>155 W</strong></div>
+            
+            <div class="toggle-container">
+                <div class="mode-btn active" onclick="setPanelMode('range')" id="btnPanelRange">範囲指定</div>
+                <div class="mode-btn" onclick="setPanelMode('fixed')" id="btnPanelFixed">個別指定</div>
+            </div>
+
+            <div id="panelRangeMode">
+                <div class="input-group">
+                    <label>最小出力 (kW)</label>
+                    <input type="number" id="outputMin" value="7.75" step="0.01">
+                    <div class="helper">パネル枚数: <span id="panelMinCount">50</span> 枚</div>
+                </div>
+                <div class="input-group">
+                    <label>最大出力 (kW)</label>
+                    <input type="number" id="outputMax" value="15.5" step="0.01">
+                    <div class="helper">パネル枚数: <span id="panelMaxCount">100</span> 枚</div>
+                </div>
+                <div class="input-group">
+                    <label>刻み幅 (枚)</label>
+                    <input type="number" id="countStepRange" value="10" min="1">
+                    <div class="helper">パネルを何枚ずつ増やすか</div>
+                </div>
+            </div>
+
+            <div id="panelFixedMode" style="display:none;">
+                <div class="input-group">
+                    <label>最小枚数</label>
+                    <input type="number" id="countMin" value="50">
+                </div>
+                <div class="input-group">
+                    <label>最大枚数</label>
+                    <input type="number" id="countMax" value="100">
+                    <div class="helper">最大出力: <span id="maxOutputKw">15.50</span> kW</div>
+                </div>
+                <div class="input-group">
+                    <label>刻み幅</label>
+                    <input type="number" id="countStep" value="10">
+                    <div class="helper">10枚ずつ増やす</div>
+                </div>
+            </div>
+            <input type="hidden" id="panelUnitWatt" value="155">
+        </div>
+
+        <div class="config-box">
+            <h2>パワーコンディショナ</h2>
+            <div class="unit-label">PCS出力: <strong>4.95 kW</strong></div>
+            
+            <div class="toggle-container">
+                <div class="mode-btn active" onclick="setPcsMode('range')" id="btnRange">範囲指定</div>
+                <div class="mode-btn" onclick="setPcsMode('fixed')" id="btnFixed">個別指定</div>
+            </div>
+
+            <div id="pcsRangeMode">
+                <div class="input-group">
+                    <label>最小台数</label>
+                    <input type="number" id="pcsMinUnits" value="1" min="1">
+                    <div class="helper">PCS容量: <span id="pcsMinKwDisplay">4.95</span> kW</div>
+                </div>
+                <div class="input-group">
+                    <label>最大台数</label>
+                    <input type="number" id="pcsMaxUnits" value="2" min="1">
+                    <div class="helper">PCS容量: <span id="pcsMaxKwDisplay">9.90</span> kW</div>
+                </div>
+                <div class="input-group">
+                    <label>刻み幅</label>
+                    <input type="number" id="pcsStepUnits" value="1" min="1">
+                </div>
+            </div>
+
+            <div id="pcsFixedMode" style="display:none;">
+                <div class="input-group">
+                    <label>台数リスト (カンマ区切り)</label>
+                    <input type="text" id="pcsUnitsList" value="1, 2, 3">
+                    <div class="helper">例: 1, 2, 3</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="config-box" style="margin-bottom: 32px;">
+        <h2>過積載率フィルター</h2>
+        <div style="display: flex; gap: 20px;">
+            <div style="flex:1;">
+                <label>下限 (%)</label>
+                <input type="number" id="overloadMin" value="120">
+            </div>
+            <div style="flex:1;">
+                <label>上限 (%)</label>
+                <input type="number" id="overloadMax" value="170">
+            </div>
+        </div>
+    </div>
+
+    <button class="generate-btn" onclick="generateCombinations()">シミュレーション開始</button>
+
+    <div id="resultArea" class="result-area">
+        <button class="copy-btn" onclick="copyResult()">📋 結果をコピー</button>
+        <label>スプレッドシートのA1セルに貼り付けてください</label>
+        <textarea id="outputData" readonly onclick="this.select()"></textarea>
+    </div>
+</div>
+
+<script>
+    const PCS_UNIT_KW = 4.95;
+    const PANEL_UNIT_W = 155;
+    let pcsMode = 'range';
+    let panelMode = 'range';
+
+    function updatePanelCountDisplay() {
+        const minKw = parseFloat(document.getElementById('outputMin').value) || 0;
+        const maxKw = parseFloat(document.getElementById('outputMax').value) || 0;
+        const step = parseInt(document.getElementById('countStepRange').value) || 1;
+        
+        // kWから枚数を計算（刻み幅で丸める）
+        const minCount = Math.round((minKw * 1000) / PANEL_UNIT_W / step) * step;
+        const maxCount = Math.round((maxKw * 1000) / PANEL_UNIT_W / step) * step;
+        
+        document.getElementById('panelMinCount').innerText = minCount;
+        document.getElementById('panelMaxCount').innerText = maxCount;
+    }
+
+    function updateMaxOutputDisplay() {
+        const maxCount = parseInt(document.getElementById('countMax').value) || 0;
+        const maxOutputKw = (maxCount * PANEL_UNIT_W) / 1000;
+        document.getElementById('maxOutputKw').innerText = maxOutputKw.toFixed(2);
+    }
+
+    function updatePcsDisplay() {
+        const minUnits = parseInt(document.getElementById('pcsMinUnits').value) || 1;
+        const maxUnits = parseInt(document.getElementById('pcsMaxUnits').value) || 1;
+        document.getElementById('pcsMinKwDisplay').innerText = (minUnits * PCS_UNIT_KW).toFixed(2);
+        document.getElementById('pcsMaxKwDisplay').innerText = (maxUnits * PCS_UNIT_KW).toFixed(2);
+    }
+
+    function setPanelMode(mode) {
+        panelMode = mode;
+        document.getElementById('btnPanelRange').className = mode === 'range' ? 'mode-btn active' : 'mode-btn';
+        document.getElementById('btnPanelFixed').className = mode === 'fixed' ? 'mode-btn active' : 'mode-btn';
+        document.getElementById('panelRangeMode').style.display = mode === 'range' ? 'block' : 'none';
+        document.getElementById('panelFixedMode').style.display = mode === 'fixed' ? 'block' : 'none';
+    }
+
+    document.getElementById('outputMin').addEventListener('input', updatePanelCountDisplay);
+    document.getElementById('outputMax').addEventListener('input', updatePanelCountDisplay);
+    document.getElementById('countStepRange').addEventListener('input', updatePanelCountDisplay);
+    document.getElementById('countMax').addEventListener('input', updateMaxOutputDisplay);
+    document.getElementById('pcsMinUnits').addEventListener('input', updatePcsDisplay);
+    document.getElementById('pcsMaxUnits').addEventListener('input', updatePcsDisplay);
+
+    function setPcsMode(mode) {
+        pcsMode = mode;
+        document.getElementById('btnRange').className = mode === 'range' ? 'mode-btn active' : 'mode-btn';
+        document.getElementById('btnFixed').className = mode === 'fixed' ? 'mode-btn active' : 'mode-btn';
+        document.getElementById('pcsRangeMode').style.display = mode === 'range' ? 'block' : 'none';
+        document.getElementById('pcsFixedMode').style.display = mode === 'fixed' ? 'block' : 'none';
+    }
+
+    function showStatus(msg, type) {
+        const el = document.getElementById('statusMessage');
+        el.style.display = 'block';
+        el.innerText = msg;
+        el.className = 'status-msg ' + type;
+    }
+
+    function generateCombinations() {
+        document.getElementById('resultArea').style.display = 'none';
+        
+        const getVal = (id) => parseFloat(document.getElementById(id).value);
+        
+        const unitW = PANEL_UNIT_W;
+        let cMin, cMax, cStep;
+        
+        // パネルモードに応じて枚数範囲を決定
+        if (panelMode === 'range') {
+            const minKw = getVal('outputMin');
+            const maxKw = getVal('outputMax');
+            cStep = parseInt(document.getElementById('countStepRange').value);
+            
+            // kWから枚数を計算（刻み幅で丸める）
+            cMin = Math.round((minKw * 1000) / unitW / cStep) * cStep;
+            cMax = Math.round((maxKw * 1000) / unitW / cStep) * cStep;
+            
+            if (isNaN(minKw) || isNaN(maxKw) || isNaN(cStep)) {
+                showStatus("エラー: 出力範囲が正しく入力されていません", "error");
+                return;
+            }
+        } else {
+            cMin = getVal('countMin');
+            cMax = getVal('countMax');
+            cStep = getVal('countStep');
+            
+            if (isNaN(cMin) || isNaN(cMax) || isNaN(cStep)) {
+                showStatus("エラー: パネル枚数が正しく入力されていません", "error");
+                return;
+            }
+        }
+        
+        const ovMin = getVal('overloadMin');
+        const ovMax = getVal('overloadMax');
+
+        if (cMin > cMax) {
+            showStatus("エラー: 最小値が最大値を超えています", "error");
+            return;
+        }
+
+        let pcsUnits = [];
+        if (pcsMode === 'range') {
+            const uMin = parseInt(document.getElementById('pcsMinUnits').value);
+            const uMax = parseInt(document.getElementById('pcsMaxUnits').value);
+            const uStep = parseInt(document.getElementById('pcsStepUnits').value);
+            if (isNaN(uMin) || isNaN(uMax) || isNaN(uStep) || uStep <= 0) {
+                showStatus("エラー: PCS台数設定が正しくありません", "error");
+                return;
+            }
+            for (let u = uMin; u <= uMax; u += uStep) {
+                pcsUnits.push(u);
+            }
+        } else {
+            const raw = document.getElementById('pcsUnitsList').value;
+            if (!raw.trim()) { showStatus("エラー: PCS台数リストが空です", "error"); return; }
+            pcsUnits = raw.split(',').map(v => parseInt(v.trim())).filter(v => !isNaN(v) && v > 0);
+        }
+
+        let results = [];
+        let countTried = 0;
+        let matchCount = 0;
+        let rowNumber = 1; // 行番号
+
+        for (let count = cMin; count <= cMax; count += cStep) {
+            let systemKw = (count * unitW) / 1000;
+            
+            for (let units of pcsUnits) {
+                countTried++;
+                let pcsKw = units * PCS_UNIT_KW;
+                let overload = (systemKw / pcsKw) * 100;
+                
+                if (overload >= ovMin && overload <= ovMax) {
+                    matchCount++;
+                    let pcsDisp = Math.round(pcsKw * 100) / 100;
+                    let ovDisp = Math.round(overload * 100) / 100;
+
+                    // 出力形式: [No] [パネル出力W] [パネル枚数] [PCS出力kW] [過積載率%]
+                    results.push(`${rowNumber}\t${unitW}\t${count}\t${pcsDisp}\t${ovDisp}`);
+                    rowNumber++;
+                }
+            }
+        }
+
+        if (matchCount === 0) {
+            showStatus(`計算結果 0件: ${countTried} 通り試行しましたが条件に合致しませんでした`, "error");
+        } else {
+            showStatus(`✓ ${matchCount} 件のデータを生成しました`, "success");
+            document.getElementById('outputData').value = results.join('\n');
+            document.getElementById('resultArea').style.display = 'block';
+        }
+    }
+
+    function copyResult() {
+        const copyText = document.getElementById("outputData");
+        copyText.select();
+        document.execCommand("copy");
+        showStatus("✓ クリップボードにコピーしました", "success");
+    }
+
+    updatePanelCountDisplay();
+    updateMaxOutputDisplay();
+    updatePcsDisplay();
+</script>
+
+</body>
+</html>
